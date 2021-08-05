@@ -3,10 +3,11 @@
 # Export .csv in same directory as this script
 # run this script and it will output 
 
-import csv;
+import csv
+import datetime
 
 INPUT_FILE          = 'Dialogue - Localized - Dialogue.csv'
-OUTPUT_FILE         = 'output_dialogue.txt'
+OUTPUT_FILE         = 'Script_Dialogue.cs'
 
 SKIP_ROW_SYMBOL     = 'SKIP'
 COMMENT_ROW_SYMBOL  = 'x'
@@ -20,7 +21,6 @@ def format_bool_string(bool_string, line):
     elif bool_string == FALSE_SYMBOL:
         return 'false'
     raise ValueError(f'Line {line}: A boolean is not formatted correctly')
-
 
 def create_dialogue_object(
     id,
@@ -209,9 +209,11 @@ def main():
     output += dialogue_output
     
     output = f'''\
+{create_file_header()}
 {{
 {output}
 }};
+{create_file_footer()}
 '''
     
     # write output into file
@@ -220,5 +222,45 @@ def main():
 
     print(output);
     print(f'Lines: {line}')
+
+def create_file_header():
+    return f'''\
+// Last created by Dialogue Exporter at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+using System.Collections;
+using System.Collections.Generic;
+
+// https://docs.google.com/spreadsheets/d/12PJr55wEMnZhO3n-c00xunSQxyDqnkutiAOx4BLh0tQ/edit#gid=0
+
+public class Model_Languages
+{{
+    public string speaker {{ get; set; }}
+    public string[] EN {{ get; set; }}
+    public Metadata[] metadata {{ get; set; }}
+    public string choiceText {{ get; set; }}
+    
+    // If Metadata is not defined, it will default to what is in the Editor;
+    // otherwise it will overwrite with what is present.
+    public class Metadata
+    {{
+        public bool? isUnskippable;
+        public bool? noContinuationIcon;
+        public bool? waitForTimeline;
+    }}
+}}
+
+/// <summary>
+/// Helper to populate Dialogue Nodes. Keep the dynamic format here.
+/// Id: area_speaker_description_XXXX
+/// </summary>
+public static class Script_Dialogue
+{{
+public static Dictionary<string, Model_Languages> Dialogue = new Dictionary<string, Model_Languages>
+'''
+
+def create_file_footer():
+    return '''\
+}
+'''
 
 main()
