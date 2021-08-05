@@ -1,19 +1,13 @@
 #! /usr/bin/python
 
 # Export .csv in same directory as this script
-# run this script and it will output 
+# Run this script and it will overwrite inside Unity Assets/Scripts 
 
-# {
-#     "intro_narrator_hotel",
-#     new Model_LanguagesUI
-#     {
-#         EN = "I work at the front desk of a seaside hotel| about a two hour drive from my hometown."
-#     }
-# },
 import csv;
+import datetime
 
 INPUT_FILE          = 'Dialogue - Localized - UI.csv'
-OUTPUT_FILE         = 'output_UI.txt'
+OUTPUT_FILE         = 'Script_UIText.cs'
 
 SKIP_ROW_SYMBOL     = 'SKIP'
 COMMENT_ROW_SYMBOL  = 'x'
@@ -80,9 +74,11 @@ def main():
             line += 1
     
     output = f'''\
+{create_file_header()}
 {{
 {output}
 }};
+{create_file_footer()}
 '''
     
     # write output into file
@@ -91,5 +87,30 @@ def main():
 
     print(output);
     print(f'Lines: {line}')
+
+def create_file_header():
+    return f'''\
+// Last created by UI Exporter at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+// https://docs.google.com/spreadsheets/d/12PJr55wEMnZhO3n-c00xunSQxyDqnkutiAOx4BLh0tQ/edit#gid=814810533
+
+public class Model_LanguagesUI
+{{
+    public string EN {{ get; set; }}
+}}
+
+public class Script_UIText
+{{
+    public static Dictionary<string, Model_LanguagesUI> Text = new Dictionary<string, Model_LanguagesUI>
+'''
+
+def create_file_footer():
+    return '''\
+}
+'''
 
 main()

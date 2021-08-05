@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 # Export .csv in same directory as this script
-# run this script and it will output 
+# Run this script and it will overwrite inside Unity Assets/Scripts
 
 import csv
 import datetime
