@@ -12,6 +12,75 @@ OUTPUT_FILE         = 'Script_UIText.cs'
 SKIP_ROW_SYMBOL     = 'SKIP'
 COMMENT_ROW_SYMBOL  = 'x'
 
+ID_DELIMITER    = '_'
+ID_MIN_LENGTH   = 4
+
+def main():
+    output = ''
+    id_count = 0
+    line = 0
+
+    with open(INPUT_FILE) as csv_file:
+        reader = csv.reader(csv_file, delimiter=',')
+        
+        for row in reader:
+            is_initial = id_count == 0;
+
+            line += 1
+            
+            # skip rows
+            if row[0].upper() == SKIP_ROW_SYMBOL.upper():
+                continue
+            
+            # comment out rows
+            if row[0].upper() == COMMENT_ROW_SYMBOL.upper():
+                prepend_header = create_section_header(row[1])
+                continue
+                
+            # notify misinputs
+            # if there is multiline text but no MULTILINE_SYMBOL, throw an error
+            if row[1] and not row[4]:
+                raise ValueError(f'Id {id}: UI text is empty even though you are defining it')
+            
+            id                  = row[1].strip()
+            dialogue            = row[4].strip()
+            
+            # skip rows without an id
+            if not id:
+                continue
+            
+            dialogue_output = create_dialogue_object(id, dialogue)
+
+            if prepend_header:
+                dialogue_output = prepend_header + dialogue_output
+                prepend_header = ''
+            
+            output += dialogue_output
+            id_count += 1
+    
+    output = f'''\
+{create_file_header()}
+{{
+{output}
+}};
+{create_file_footer()}
+'''
+    
+    # write output into file
+    with open(OUTPUT_FILE, 'w') as f:
+        f.write(output);
+
+    print(f'Ids: {id_count}')
+    print(f'Lines processed: {line}')
+
+def check_id(id, line):
+    if id.count(ID_DELIMITER) < 2:
+        raise ValueError(f'Line {line} Id {id}: Does not contain at least 2 delimiters')
+    if bool(re.search(r"\s", id)):
+        raise ValueError(f'Line {line} Id {id}: Contains spaces')
+    if len(id) < 4:
+        raise ValueError(f'Line {line} Id {id}: Is less than 4 characters')
+
 def create_dialogue_object(
     id,
     dialogue,
@@ -32,61 +101,6 @@ def create_section_header(text):
 // ------------------------------------------------------------------
 // {text}\n'''
     return output
-
-def main():
-    output = ''
-    line = 0
-
-    with open(INPUT_FILE) as csv_file:
-        reader = csv.reader(csv_file, delimiter=',')
-        
-        for row in reader:
-            is_initial = line == 0;
-            
-            # skip rows
-            if row[0].upper() == SKIP_ROW_SYMBOL.upper():
-                continue
-            
-            # comment out rows
-            if row[0].upper() == COMMENT_ROW_SYMBOL.upper():
-                prepend_header = create_section_header(row[1])
-                continue
-                
-            # notify misinputs
-            # if there is multiline text but no MULTILINE_SYMBOL, throw an error
-            if row[1] and not row[4]:
-                raise ValueError(f'Id {id}: UI text is empty even though you are defining it')
-            
-            id                  = row[1]
-            dialogue            = row[4]
-            
-            # skip rows without an id
-            if not id:
-                continue
-            
-            dialogue_output = create_dialogue_object(id, dialogue)
-
-            if prepend_header:
-                dialogue_output = prepend_header + dialogue_output
-                prepend_header = ''
-            
-            output += dialogue_output
-            line += 1
-    
-    output = f'''\
-{create_file_header()}
-{{
-{output}
-}};
-{create_file_footer()}
-'''
-    
-    # write output into file
-    with open(OUTPUT_FILE, 'w') as f:
-        f.write(output);
-
-    print(output);
-    print(f'Lines: {line}')
 
 def create_file_header():
     return f'''\

@@ -5,6 +5,7 @@
 
 import csv
 import datetime
+import re
 
 INPUT_FILE          = 'Dialogue - Localized - Dialogue.csv'
 OUTPUT_FILE         = 'Script_Dialogue.cs'
@@ -14,6 +15,146 @@ COMMENT_ROW_SYMBOL  = 'x'
 MULTILINE_SYMBOL    = '"'
 TRUE_SYMBOL         = 'TRUE' 
 FALSE_SYMBOL        = 'FALSE'
+
+ID_DELIMITER    = '_'
+ID_MIN_LENGTH   = 4
+
+def main():
+    output = ''
+    id_count = 0
+    line = 0    # line in Excel (for debugging)
+
+    with open(INPUT_FILE) as csv_file:
+        
+        id = ''
+        dialogues = [];
+        speaker = ''
+        choice_text = ''
+        prepend_header = ''
+        
+        # metadata
+        unskippables = []
+        no_continuations = []
+        wait_for_timelines = []
+        
+        reader = csv.reader(csv_file, delimiter=',')
+        
+        for row in reader:
+            is_initial = id_count == 0;
+            line += 1
+
+            # skip rows
+            if row[0].upper() == SKIP_ROW_SYMBOL.upper():
+                continue
+            
+            # comment out rows
+            if row[0].upper() == COMMENT_ROW_SYMBOL.upper():
+                prepend_header = create_section_header(row[1])
+
+                if is_initial:
+                    output += prepend_header
+                    prepend_header = ''
+                continue
+                
+            # notify misinputs
+            # if there is multiline text but no MULTILINE_SYMBOL, throw an error
+            if not row[1] and row[4]:
+                raise ValueError(f'Line {line} "{row[4]}": You need to signal there is a multiline with {MULTILINE_SYMBOL}')
+            elif row[1] == MULTILINE_SYMBOL and not row[4]:
+                raise ValueError(f'Line {line} "{row[4]}": There is a multiline sign {MULTILINE_SYMBOL} but no corresponding text')
+            
+            current_id                  = row[1].strip()
+            current_dialogue            = row[4].strip()
+            current_speaker             = row[2].strip()
+            current_choice_text         = row[5].strip()
+            
+            current_unskippable         = row[6].strip()
+            current_no_continuation     = row[7].strip()
+            current_wait_for_timeline   = row[8].strip()
+
+            # skip rows without an id
+            if not current_id:
+                continue
+
+            # handle new dialogue nodes or multilines
+            is_multiline_dialogue = current_id == MULTILINE_SYMBOL
+            is_new_dialogue_node = (id != current_id and not is_multiline_dialogue) or is_initial;
+            
+            # check for valid ids
+            if not is_multiline_dialogue:
+                check_id(current_id, line)
+
+            # on new dialogue node, output the data we've been building for the previous node
+            if is_new_dialogue_node:
+                if not is_initial:
+                    dialogue_output = create_dialogue_object(
+                        id,
+                        speaker,
+                        dialogues,
+                        choice_text,
+                        unskippables,
+                        no_continuations,
+                        wait_for_timelines,
+                        line
+                    )
+                    output += dialogue_output
+                    if prepend_header:
+                        output += prepend_header
+                        prepend_header = ''
+                
+                id = current_id
+                dialogues = [current_dialogue]
+                speaker = current_speaker
+                choice_text = current_choice_text
+
+                unskippables = [current_unskippable]
+                no_continuations = [current_no_continuation]
+                wait_for_timelines = [current_wait_for_timeline]
+            
+            elif is_multiline_dialogue:
+                dialogues.append(current_dialogue)
+                
+                unskippables.append(current_unskippable)
+                no_continuations.append(current_no_continuation)
+                wait_for_timelines.append(current_wait_for_timeline)
+
+            id_count += 1
+
+    # output what's left in rows data
+    dialogue_output = create_dialogue_object(
+        id,
+        speaker,
+        dialogues,
+        choice_text,
+        unskippables,
+        no_continuations,
+        wait_for_timelines,
+        line
+    )
+    output += dialogue_output
+    
+    output = f'''\
+{create_file_header()}
+{{
+{output}
+}};
+{create_file_footer()}
+'''
+    
+    # write output into file
+    with open(OUTPUT_FILE, 'w') as f:
+        f.write(output);
+
+    print(f'Ids: {id_count}')
+    print(f'Lines processed: {line}')
+
+def check_id(id, line):
+    if id.count(ID_DELIMITER) < 2:
+        raise ValueError(f'Line {line} Id {id}: Does not contain at least 2 delimiters')
+    if bool(re.search(r"\s", id)):
+        raise ValueError(f'Line {line} Id {id}: Contains spaces')
+    if len(id) < 4:
+        raise ValueError(f'Line {line} Id {id}: Is less than 4 characters')
 
 def format_bool_string(bool_string, line):
     if bool_string == TRUE_SYMBOL:
@@ -99,129 +240,6 @@ def create_section_header(text):
 // ------------------------------------------------------------------
 // {text}\n'''
     return output
-
-def main():
-    output = ''
-    line = 0
-
-    with open(INPUT_FILE) as csv_file:
-        
-        id = ''
-        dialogues = [];
-        speaker = ''
-        choice_text = ''
-        prepend_header = ''
-        
-        # metadata
-        unskippables = []
-        no_continuations = []
-        wait_for_timelines = []
-        
-        reader = csv.reader(csv_file, delimiter=',')
-        
-        for row in reader:
-            is_initial = line == 0;
-            
-            # skip rows
-            if row[0].upper() == SKIP_ROW_SYMBOL.upper():
-                continue
-            
-            # comment out rows
-            if row[0].upper() == COMMENT_ROW_SYMBOL.upper():
-                prepend_header = create_section_header(row[1])
-
-                if is_initial:
-                    output += prepend_header
-                    prepend_header = ''
-                continue
-                
-            # notify misinputs
-            # if there is multiline text but no MULTILINE_SYMBOL, throw an error
-            if not row[1] and row[4]:
-                raise ValueError(f'Line {line} "{row[4]}": You need to signal there is a multiline with {MULTILINE_SYMBOL}')
-            elif row[1] == MULTILINE_SYMBOL and not row[4]:
-                raise ValueError(f'Line {line} "{row[4]}": There is a multiline sign {MULTILINE_SYMBOL} but no corresponding text')
-            
-            current_id                  = row[1]
-            current_dialogue            = row[4]
-            current_speaker             = row[2]
-            current_choice_text         = row[5]
-            
-            current_unskippable         = row[6]
-            current_no_continuation     = row[7]
-            current_wait_for_timeline   = row[8]
-            
-            # skip rows without an id
-            if not current_id:
-                continue
-
-            # handle new dialogue nodes or multilines
-            is_multiline_dialogue = current_id == MULTILINE_SYMBOL
-            is_new_dialogue_node = (id != current_id and not is_multiline_dialogue) or is_initial;
-            
-            # on new dialogue node, output the data we've been building for the previous node
-            if is_new_dialogue_node:
-                if not is_initial:
-                    dialogue_output = create_dialogue_object(
-                        id,
-                        speaker,
-                        dialogues,
-                        choice_text,
-                        unskippables,
-                        no_continuations,
-                        wait_for_timelines,
-                        line
-                    )
-                    output += dialogue_output
-                    if prepend_header:
-                        output += prepend_header
-                        prepend_header = ''
-                
-                id = current_id
-                dialogues = [current_dialogue]
-                speaker = current_speaker
-                choice_text = current_choice_text
-
-                unskippables = [current_unskippable]
-                no_continuations = [current_no_continuation]
-                wait_for_timelines = [current_wait_for_timeline]
-            
-            elif is_multiline_dialogue:
-                dialogues.append(current_dialogue)
-                
-                unskippables.append(current_unskippable)
-                no_continuations.append(current_no_continuation)
-                wait_for_timelines.append(current_wait_for_timeline)
-
-            line += 1
-
-    # output what's left in rows data
-    dialogue_output = create_dialogue_object(
-        id,
-        speaker,
-        dialogues,
-        choice_text,
-        unskippables,
-        no_continuations,
-        wait_for_timelines,
-        line
-    )
-    output += dialogue_output
-    
-    output = f'''\
-{create_file_header()}
-{{
-{output}
-}};
-{create_file_footer()}
-'''
-    
-    # write output into file
-    with open(OUTPUT_FILE, 'w') as f:
-        f.write(output);
-
-    print(output);
-    print(f'Lines: {line}')
 
 def create_file_header():
     return f'''\
