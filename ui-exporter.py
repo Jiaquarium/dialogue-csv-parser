@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 # Export .csv in same directory as this script
-# Run this script and it will overwrite inside Unity Assets/Scripts 
+# Run this script with python3 and it will overwrite inside Unity Assets/Scripts 
 
 import csv;
 import datetime
@@ -38,9 +38,8 @@ def main():
                 continue
                 
             # notify misinputs
-            # if there is multiline text but no MULTILINE_SYMBOL, throw an error
             if row[1] and not row[4]:
-                raise ValueError(f'Id {id}: UI text is empty even though you are defining it')
+                raise ValueError(f'Line {line} Id {id}: UI text is empty even though you are defining it')
             
             id                  = row[1].strip()
             dialogue            = row[4].strip()

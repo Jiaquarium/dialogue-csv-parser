@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 # Export .csv in same directory as this script
-# Run this script and it will overwrite inside Unity Assets/Scripts
+# Run this script with python3 and it will overwrite inside Unity Assets/Scripts
 
 import csv
 import datetime
@@ -36,6 +36,7 @@ def main():
         unskippables = []
         no_continuations = []
         wait_for_timelines = []
+        autonexts = []
         
         reader = csv.reader(csv_file, delimiter=',')
         
@@ -71,6 +72,7 @@ def main():
             current_unskippable         = row[6].strip()
             current_no_continuation     = row[7].strip()
             current_wait_for_timeline   = row[8].strip()
+            current_autonext            = row[9].strip()
 
             # skip rows without an id
             if not current_id:
@@ -95,6 +97,7 @@ def main():
                         unskippables,
                         no_continuations,
                         wait_for_timelines,
+                        autonexts,
                         line
                     )
                     output += dialogue_output
@@ -110,6 +113,7 @@ def main():
                 unskippables = [current_unskippable]
                 no_continuations = [current_no_continuation]
                 wait_for_timelines = [current_wait_for_timeline]
+                autonexts = [current_autonext]
             
             elif is_multiline_dialogue:
                 dialogues.append(current_dialogue)
@@ -117,6 +121,7 @@ def main():
                 unskippables.append(current_unskippable)
                 no_continuations.append(current_no_continuation)
                 wait_for_timelines.append(current_wait_for_timeline)
+                autonexts.append(current_autonext)
 
             id_count += 1
 
@@ -129,6 +134,7 @@ def main():
         unskippables,
         no_continuations,
         wait_for_timelines,
+        autonexts,
         line
     )
     output += dialogue_output
@@ -171,6 +177,7 @@ def create_dialogue_object(
     unskippables,
     no_continuations,
     wait_for_timelines,
+    autonexts,
     line # for debugging
 ):
     dialogues_output = ''
@@ -185,10 +192,10 @@ def create_dialogue_object(
             raise ValueError(f'Line {line}: Dialogue is empty but it is not the only starting dialogue for the node')
         
         dialogues_output += f'''\
-                "{dialogues[i]}",''' if not is_dialogue_empty else ''
+                @"{dialogues[i]}",''' if not is_dialogue_empty else ''
         
         # output null if no metadata is defined for this dialogue section
-        if not unskippables[i] and not no_continuations[i] and not wait_for_timelines[i]:
+        if not unskippables[i] and not no_continuations[i] and not wait_for_timelines[i] and not autonexts[i]:
             metadata = '''\
                 null,'''
             metadatas_null_count += 1
@@ -196,11 +203,12 @@ def create_dialogue_object(
             unskippable_prop        = f'isUnskippable = {format_bool_string(unskippables[i], line)}, ' if unskippables[i] else ''
             no_continuation_prop    = f'noContinuationIcon = {format_bool_string(no_continuations[i], line)}, ' if no_continuations[i] else ''
             wait_for_timeline_prop  = f'waitForTimeline = {format_bool_string(wait_for_timelines[i], line)}, ' if wait_for_timelines[i] else ''
+            autonext_prop           = f'autoNext = {format_bool_string(autonexts[i], line)}, ' if autonexts[i] else ''
 
             metadata = f'''\
                 new Model_Languages.Metadata
                 {{
-                    {unskippable_prop}{no_continuation_prop}{wait_for_timeline_prop}
+                    {unskippable_prop}{no_continuation_prop}{wait_for_timeline_prop}{autonext_prop}
                 }},'''
         metadatas_output += f'{metadata}'
 
@@ -264,6 +272,7 @@ public class Model_Languages
         public bool? isUnskippable;
         public bool? noContinuationIcon;
         public bool? waitForTimeline;
+        public bool? autoNext;
     }}
 }}
 
