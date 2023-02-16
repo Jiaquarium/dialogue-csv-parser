@@ -175,6 +175,11 @@ def format_bool_string(bool_string, line):
         return 'false'
     raise ValueError(f'Line {line}: A boolean is not formatted correctly')
 
+def format_int(i, line):
+    if isinstance(int(i), int):
+        return i
+    raise ValueError(f'Line {line}: An int is not formatted correctly')
+
 def create_dialogue_object(
     id,
     speaker,
@@ -211,7 +216,7 @@ def create_dialogue_object(
             no_continuation_prop    = f'noContinuationIcon = {format_bool_string(no_continuations[i], line)}, ' if no_continuations[i] else ''
             wait_for_timeline_prop  = f'waitForTimeline = {format_bool_string(wait_for_timelines[i], line)}, ' if wait_for_timelines[i] else ''
             autonext_prop           = f'autoNext = {format_bool_string(autonexts[i], line)}, ' if autonexts[i] else ''
-            full_art_override_prop  = f'fullArtOverride = {format_bool_string(full_art_overrides[i], line)}, ' if full_art_overrides[i] else ''
+            full_art_override_prop  = f'fullArtOverride = {format_int(full_art_overrides[i], line)}, ' if full_art_overrides[i] else ''
 
             metadata = f'''\
                 new Model_Languages.Metadata
