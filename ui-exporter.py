@@ -43,12 +43,13 @@ def main():
             
             id                  = row[1].strip()
             dialogue            = row[4].strip()
+            dialogue_cn         = row[5].strip()
             
             # skip rows without an id
             if not id:
                 continue
             
-            dialogue_output = create_dialogue_object(id, dialogue)
+            dialogue_output = create_dialogue_object(id, dialogue, dialogue_cn)
 
             if prepend_header:
                 dialogue_output = prepend_header + dialogue_output
@@ -83,13 +84,16 @@ def check_id(id, line):
 def create_dialogue_object(
     id,
     dialogue,
+    dialogue_cn,
 ):
+    dialogue_cn = dialogue if not dialogue_cn else dialogue_cn
     row_data = f'''\
 {{
     "{id}",
     new Model_LanguagesUI
     {{
-        EN = @"{dialogue}"
+        EN = @"{dialogue}",
+        CN = @"{dialogue_cn}"
     }}
 }},
 '''
@@ -114,6 +118,7 @@ using UnityEngine;
 public class Model_LanguagesUI
 {{
     public string EN {{ get; set; }}
+    public string CN {{ get; set; }}
 }}
 
 public class Script_UIText
