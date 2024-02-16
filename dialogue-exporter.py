@@ -231,6 +231,10 @@ def create_dialogue_object(
         dialogues_output += dialogue_output_en
             
         is_dialogue_empty_cn = not dialogues_cn[i].strip()
+        # TBD Add BACK BELOW AFTER DIALOGUE IS FULLY POPULATED
+        # if is_dialogue_empty_cn and i > 0:
+        #     raise ValueError(f'Line {line}: Dialogue CN is empty but it is not the only starting dialogue for the node')
+        
         # Fallback to English line if the localization is empty
         dialogues_output_cn += f'''\
                 @"{dialogues_cn[i]}",''' if not is_dialogue_empty_cn else dialogue_output_en
@@ -260,13 +264,13 @@ def create_dialogue_object(
             dialogues_output_cn += f'\n'
             metadatas_output += f'\n'
     
-    choice_text_prop_en = f'''
+    choice_text_prop = f'''
         choiceText = "{choice_text}",''' if choice_text else ''
-    choice_text_prop = choice_text_prop_en
 
-    # localized choice text should always exist; if no localized, copy over EN
+    # localized choice text should never be blank; if no localized, copy over EN with localized key
+    choice_text_name_cn = "choiceTextCN"
     choice_text_prop_cn = f'''
-        choiceTextCN = "{choice_text_cn}",''' if choice_text_cn else choice_text_prop_en
+        choiceTextCN = "{choice_text_cn}",''' if choice_text_cn else choice_text_prop_fallback(choice_text_name_cn, choice_text)
     
     # don't render metadatas field if all are null
     metadatas_output = f'''\
@@ -294,6 +298,10 @@ metadata = new Model_Languages.Metadata[]
 }},
 '''
     return row_data
+
+def choice_text_prop_fallback(prop, choice_text):
+    return f'''
+        {prop} = "{choice_text}",''' if choice_text else ''
 
 def create_section_header(text):
     output = f'''\
