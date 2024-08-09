@@ -13,6 +13,7 @@ Localization Notes
 import csv
 import datetime
 import re
+import warnings
 
 INPUT_FILE          = 'Dialogue - Localized - Dialogue.csv'
 OUTPUT_FILE         = 'Script_Dialogue.cs'
@@ -36,9 +37,11 @@ def main():
         id = ''
         dialogues = []
         dialogues_cn = []
+        dialogues_jp = []
         speaker = ''
         choice_text = ''
         choice_text_cn = ''
+        choice_text_jp = ''
         prepend_header = ''
         
         # metadata
@@ -77,9 +80,11 @@ def main():
             current_id                  = row[1].strip()
             current_dialogue            = row[4].strip()
             current_dialogue_cn         = row[12].strip()
+            current_dialogue_jp         = row[14].strip()
             current_speaker             = row[2].strip()
             current_choice_text         = row[5].strip()
             current_choice_text_cn      = row[13].strip()
+            current_choice_text_jp      = row[15].strip()
             
             current_unskippable         = row[6].strip()
             current_no_continuation     = row[7].strip()
@@ -107,8 +112,10 @@ def main():
                         speaker,
                         dialogues,
                         dialogues_cn,
+                        dialogues_jp,
                         choice_text,
                         choice_text_cn,
+                        choice_text_jp,
                         unskippables,
                         no_continuations,
                         wait_for_timelines,
@@ -125,9 +132,11 @@ def main():
                 id = current_id
                 dialogues = [current_dialogue]
                 dialogues_cn = [current_dialogue_cn]
+                dialogues_jp = [current_dialogue_jp]
                 speaker = current_speaker
                 choice_text = current_choice_text
                 choice_text_cn = current_choice_text_cn
+                choice_text_jp = current_choice_text_jp
 
                 unskippables = [current_unskippable]
                 no_continuations = [current_no_continuation]
@@ -139,6 +148,7 @@ def main():
             elif is_multiline_dialogue:
                 dialogues.append(current_dialogue)
                 dialogues_cn.append(current_dialogue_cn)
+                dialogues_jp.append(current_dialogue_jp)
                 
                 unskippables.append(current_unskippable)
                 no_continuations.append(current_no_continuation)
@@ -154,8 +164,10 @@ def main():
         speaker,
         dialogues,
         dialogues_cn,
+        dialogues_jp,
         choice_text,
         choice_text_cn,
+        choice_text_jp,
         unskippables,
         no_continuations,
         wait_for_timelines,
@@ -205,8 +217,10 @@ def create_dialogue_object(
     speaker,
     dialogues,
     dialogues_cn,
+    dialogues_jp,
     choice_text,
     choice_text_cn,
+    choice_text_jp,
     unskippables,
     no_continuations,
     wait_for_timelines,
@@ -216,6 +230,7 @@ def create_dialogue_object(
 ):
     dialogues_output = ''
     dialogues_output_cn = ''
+    dialogues_output_jp = ''
     metadatas_output = ''
     metadatas_null_count = 0
 
@@ -230,6 +245,8 @@ def create_dialogue_object(
                 @"{dialogues[i]}",''' if not is_dialogue_empty else ''
         dialogues_output += dialogue_output_en
             
+        # -------------------------------------------------------------
+        # CN - Dialogue Sections
         is_dialogue_empty_cn = not dialogues_cn[i].strip()
         # TBD Add BACK BELOW AFTER DIALOGUE IS FULLY POPULATED
         # if is_dialogue_empty_cn and i > 0:
@@ -238,6 +255,16 @@ def create_dialogue_object(
         # Fallback to English line if the localization is empty
         dialogues_output_cn += f'''\
                 @"{dialogues_cn[i]}",''' if not is_dialogue_empty_cn else dialogue_output_en
+        # -------------------------------------------------------------
+        # JP - Dialogue Sections
+        is_dialogue_empty_jp = not dialogues_jp[i].strip()
+        # if is_dialogue_empty_jp and i > 0:
+        #     warnings.warn(f'Line {line}: Dialogue JP is empty but it is not the only starting dialogue for the node')
+        
+        # Fallback to English line if the localization is empty
+        dialogues_output_jp += f'''\
+                @"{dialogues_jp[i]}",''' if not is_dialogue_empty_jp else dialogue_output_en
+        # -------------------------------------------------------------
         
         # output null if no metadata is defined for this dialogue section
         if not unskippables[i] and not no_continuations[i] and not wait_for_timelines[i] and not autonexts[i] and not full_art_overrides[i]:
@@ -262,15 +289,24 @@ def create_dialogue_object(
         if i < len(dialogues) - 1:
             dialogues_output += f'\n'
             dialogues_output_cn += f'\n'
+            dialogues_output_jp += f'\n'
             metadatas_output += f'\n'
     
     choice_text_prop = f'''
         choiceText = "{choice_text}",''' if choice_text else ''
 
+    # -------------------------------------------------------------
+    # CN - Choice Text
     # localized choice text should never be blank; if no localized, copy over EN with localized key
     choice_text_name_cn = "choiceTextCN"
     choice_text_prop_cn = f'''
-        choiceTextCN = "{choice_text_cn}",''' if choice_text_cn else choice_text_prop_fallback(choice_text_name_cn, choice_text)
+        {choice_text_name_cn} = "{choice_text_cn}",''' if choice_text_cn else choice_text_prop_fallback(choice_text_name_cn, choice_text)
+    # -------------------------------------------------------------
+    # JP - Choice Text
+    choice_text_name_jp = "choiceTextJP"
+    choice_text_prop_jp = f'''
+        {choice_text_name_jp} = "{choice_text_jp}",''' if choice_text_jp else choice_text_prop_fallback(choice_text_name_jp, choice_text)
+    # -------------------------------------------------------------
     
     # don't render metadatas field if all are null
     metadatas_output = f'''\
@@ -292,7 +328,11 @@ metadata = new Model_Languages.Metadata[]
         CN = new string[]
         {{
 {dialogues_output_cn}
-        }},{choice_text_prop}{choice_text_prop_cn}
+        }},
+        JP = new string[]
+        {{
+{dialogues_output_jp}
+        }},{choice_text_prop}{choice_text_prop_cn}{choice_text_prop_jp}
         {metadatas_output}
     }}
 }},
@@ -323,9 +363,11 @@ public class Model_Languages
     public string speaker {{ get; set; }}
     public string[] EN {{ get; set; }}
     public string[] CN {{ get; set; }}
+    public string[] JP {{ get; set; }}
     public Metadata[] metadata {{ get; set; }}
     public string choiceText {{ get; set; }}
     public string choiceTextCN {{ get; set; }}
+    public string choiceTextJP {{ get; set; }}
     
     // If Metadata is not defined, it will default to what is in the Editor;
     // otherwise it will overwrite with what is present.

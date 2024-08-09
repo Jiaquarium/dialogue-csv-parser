@@ -44,12 +44,18 @@ def main():
             id                  = row[1].strip()
             dialogue            = row[4].strip()
             dialogue_cn         = row[5].strip()
+            dialogue_jp         = row[6].strip()
             
             # skip rows without an id
             if not id:
                 continue
             
-            dialogue_output = create_dialogue_object(id, dialogue, dialogue_cn)
+            dialogue_output = create_dialogue_object(
+                id,
+                dialogue,
+                dialogue_cn,
+                dialogue_jp
+            )
 
             if prepend_header:
                 dialogue_output = prepend_header + dialogue_output
@@ -85,15 +91,18 @@ def create_dialogue_object(
     id,
     dialogue,
     dialogue_cn,
+    dialogue_jp,
 ):
     dialogue_cn = dialogue if not dialogue_cn else dialogue_cn
+    dialogue_jp = dialogue if not dialogue_jp else dialogue_jp
     row_data = f'''\
 {{
     "{id}",
     new Model_LanguagesUI
     {{
         EN = @"{dialogue}",
-        CN = @"{dialogue_cn}"
+        CN = @"{dialogue_cn}",
+        JP = @"{dialogue_jp}"
     }}
 }},
 '''
@@ -119,6 +128,7 @@ public class Model_LanguagesUI
 {{
     public string EN {{ get; set; }}
     public string CN {{ get; set; }}
+    public string JP {{ get; set; }}
 }}
 
 public class Script_UIText
